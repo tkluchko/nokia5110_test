@@ -30,3 +30,19 @@
 
 # Debug files
 *.dSYM/
+
+
+Linker/
+List/
+Obj/
+*.DBK
+*.PWI
+*.cci
+*.hci
+*.c~
+
+*.cbi
+*.cof
+*.fct
+
+dates.h

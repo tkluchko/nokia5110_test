@@ -26,6 +26,8 @@
 .equ __w1_bit=3
 #endasm
 
+// #define REAL_DATES //uncomment for use real date
+
 #include <1wire.h>
 #include <mega8.h>
 #include <io.h>
@@ -36,8 +38,17 @@
 #include "nokia5110_lcd.c"
 #include "ds18b20.h"
 
+#ifdef REAL_DATES
+#include "dates.h"
+#endif
+
+#ifndef REAL_DATES
+#include "dates_dummy.h"
+#endif
+
 //count of ds18b20
 #define MAX_DS18b20 2
+
 
 #define ON 1
 #define OFF 0
@@ -86,13 +97,15 @@ unsigned char i;
 
 unsigned char mode;
 
+unsigned char dateIndex;
+
 bit button_1_on;
 bit button_2_on;
 bit button_3_on;
 
 
-
 void printTwoDigit(unsigned char number);
+void checkDate(void);
 
 void doBtn1Action(void){
     mode = mode < 6 ? (mode + 1) : 0;
@@ -112,16 +125,19 @@ void doBtn2Action(void){
         case MODE_SET_DATE_MONTH: {
             month = month < 12 ? (month + 1) : 0;
             rtc_set_time(minutes, hours, day, date, month, year);
+            checkDate();
             break;
         }
         case MODE_SET_DATE_DAY_OF_WEEK: {
             day = day < 7 ? (day + 1) : 1;
             rtc_set_time(minutes, hours, day, date, month, year);
+            checkDate();
             break;
         }
         case MODE_SET_DATE_DAY: {
             date = date < 31 ? (date + 1) : 1;
             rtc_set_time(minutes, hours, day, date, month, year);
+            checkDate();
             break;
         }
         case MODE_SET_TIME_HOUR: {
@@ -155,16 +171,19 @@ void doBtn3Action(void){
         case MODE_SET_DATE_MONTH: {
             month = month >0 ? (month - 1) : 12;
             rtc_set_time(minutes, hours, day, date, month, year);
+            checkDate();
             break;
         }
         case MODE_SET_DATE_DAY_OF_WEEK: {
             day = day >0 ? (day - 1) : 7;
             rtc_set_time(minutes, hours, day, date, month, year);
+            checkDate();
             break;
         }
         case MODE_SET_DATE_DAY: {
             date = date >0 ? (date - 1) : 31;
             rtc_set_time(minutes, hours, day, date, month, year);
+            checkDate();
             break;
         }
         case MODE_SET_TIME_HOUR: {
@@ -183,21 +202,18 @@ void doBtn3Action(void){
 
 interrupt [TIM1_COMPA] void timer1_compa_isr(void) {
     if(!PINC.0){ 
-//        LED_YELLOW = ~LED_YELLOW;
         if(button_1_on){
             doBtn1Action();
         }
         button_1_on = !button_1_on;
     }
     if(!PINC.1){ 
-//        LED_YELLOW = ~LED_YELLOW;
         if(button_2_on){
             doBtn2Action();
         }
         button_2_on = !button_2_on;
     }
     if(!PINC.2){ 
-//        LED_YELLOW = ~LED_YELLOW;
         if(button_3_on){
             doBtn3Action();
         }
@@ -280,6 +296,9 @@ void displayDayInfo(void) {
     lcd_clear(); 
     lcd_gotoxy(0, 0);
     lcd_str("Day info");
+    lcd_gotoxy(0, 2);
+    lcd_str(msg[dateIndex]);
+    
     lcd_gotoxy(10, 5);
     displayDate();
 }
@@ -351,6 +370,18 @@ void displayInfo(void){
    
 }
 
+void checkDate(void){
+    unsigned char i;
+    dateIndex = 0;
+    for (i = 0; i < DATE_SIZE; i++) {    
+        if (dates[i][0] == date && dates[i][1] == month) {
+            dateIndex = i;
+            return;
+        }
+    }
+    
+}
+
 void main(void) {
 // Declare your local variables here
     unsigned char tempCounter = 0;
@@ -403,6 +434,8 @@ void main(void) {
 
 	lcd_init();
 	lcd_contrast(0x40);
+    rtc_get_time(&seconds, &minutes, &hours, &day, &date, &month, &year); 
+   
 
     //skip first values
     if (ds18b20_devices >= 0) {
@@ -410,10 +443,15 @@ void main(void) {
         ds18b20_temperature(&rom_code[i][0]);
         }
      }
+     
+    checkDate();
 
   
 	while (1) {
-		rtc_get_time(&seconds, &minutes, &hours, &day, &date, &month, &year);
+		rtc_get_time(&seconds, &minutes, &hours, &day, &date, &month, &year); 
+        if(hours == 0 && minutes == 0){
+            checkDate();
+        }
         if(tempCounter == 20){
             if(mode == MODE_SHOW_MAIN_INFO) readTemperatureValues();
             tempCounter = 0;
