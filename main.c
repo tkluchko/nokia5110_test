@@ -26,7 +26,7 @@
 .equ __w1_bit=3
 #endasm
 
-// #define REAL_DATES //uncomment for use real date
+//#define REAL_DATES //uncomment for use real date
 
 #include <1wire.h>
 #include <mega8.h>
@@ -46,18 +46,13 @@
 #include "dates_dummy.h"
 #endif
 
-//count of ds18b20
-#define MAX_DS18b20 2
-
-
-#define ON 1
-#define OFF 0
-
 #define TRUE 1
 #define FALSE 0
 
-#define LED_BACKLIGT PORTD.0
+//count of ds18b20
+#define MAX_DS18b20 2
 
+#define LED_BACKLIGT PORTD.0
 
 #define MODE_SHOW_MAIN_INFO 0
 #define MODE_SET_DATE_YEAR 1
@@ -71,14 +66,14 @@
 // Declare your global variables here
 
 unsigned char *dayOfWeek[8] = {
-    "unknown",
-    "Ïí",
-    "Âò",
-    "Ñð",
-    "×ò",
-    "Ïò",
-    "Ñá",
-    "Âñ"
+    "Unk",
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat",
+    "Sun"
 };
 
 ds18b20_temperature_data_struct temperature[MAX_DS18b20];
@@ -97,6 +92,7 @@ unsigned char i;
 
 unsigned char mode;
 
+bit dateInfoPresent;
 unsigned char dateIndex;
 
 bit button_1_on;
@@ -106,6 +102,7 @@ bit button_3_on;
 
 void printTwoDigit(unsigned char number);
 void checkDate(void);
+unsigned char getLastMonthDay(void);
 
 void doBtn1Action(void){
     mode = mode < 6 ? (mode + 1) : 0;
@@ -123,7 +120,7 @@ void doBtn2Action(void){
             break;
         }
         case MODE_SET_DATE_MONTH: {
-            month = month < 12 ? (month + 1) : 0;
+            month = month < 12 ? (month + 1) : 1;
             rtc_set_time(minutes, hours, day, date, month, year);
             checkDate();
             break;
@@ -135,7 +132,7 @@ void doBtn2Action(void){
             break;
         }
         case MODE_SET_DATE_DAY: {
-            date = date < 31 ? (date + 1) : 1;
+            date = date < getLastMonthDay() ? (date + 1) : 1;
             rtc_set_time(minutes, hours, day, date, month, year);
             checkDate();
             break;
@@ -169,19 +166,19 @@ void doBtn3Action(void){
             break;
         }
         case MODE_SET_DATE_MONTH: {
-            month = month >0 ? (month - 1) : 12;
+            month = month >1 ? (month - 1) : 12;
             rtc_set_time(minutes, hours, day, date, month, year);
             checkDate();
             break;
         }
         case MODE_SET_DATE_DAY_OF_WEEK: {
-            day = day >0 ? (day - 1) : 7;
+            day = day >1 ? (day - 1) : 7;
             rtc_set_time(minutes, hours, day, date, month, year);
             checkDate();
             break;
         }
         case MODE_SET_DATE_DAY: {
-            date = date >0 ? (date - 1) : 31;
+            date = date >1 ? (date - 1) : getLastMonthDay();
             rtc_set_time(minutes, hours, day, date, month, year);
             checkDate();
             break;
@@ -222,7 +219,30 @@ interrupt [TIM1_COMPA] void timer1_compa_isr(void) {
     TCNT1=0;
 }
 
-
+unsigned char getLastMonthDay(void){
+    unsigned char retVal = 31;
+    switch(month){
+        case 1:
+        case 3:
+        case 5:
+        case 7:
+        case 8:
+        case 10:
+        case 12:
+            retVal = 31;
+            break;
+        case 4:
+        case 6:
+        case 9:
+        case 11:
+            retVal = 30;
+            break;
+        case 2:
+            retVal = year % 4 ==  0 ? 29 : 28;
+            break;
+    }
+    return retVal;           
+}
 
 void readTemperatureValues(void){
     if (ds18b20_devices >= 1) {
@@ -244,6 +264,7 @@ void printTemperatureValue(ds18b20_temperature_data_struct temperature){
         lcd_putch('5');
     }
 }
+
 void displayTime(void) {
     printTwoDigit(hours);
     lcd_putch(':');
@@ -258,7 +279,7 @@ void displayTimeBig(void) {
     writeCharBig(28,1,':');
     writeCharBig(34,1,minutes / 10 + 48);
     writeCharBig(48,1,minutes % 10 + 48);
-    
+    //show small seconds
     lcd_gotoxy(66, 3);
     lcd_putch(seconds / 10 + 48);
     lcd_putch(seconds % 10 + 48);
@@ -273,6 +294,7 @@ void displayDate(void) {
     lcd_putch(' ');
     lcd_str(dayOfWeek[day]);
 }
+
 void displayMainInfo(void) {
     lcd_clear(); 
     displayTimeBig();
@@ -287,6 +309,10 @@ void displayMainInfo(void) {
             }
         }
     }
+    if(dateInfoPresent) {
+        lcd_gotoxy(66, 1);
+        lcd_str("di");
+    }
 
     lcd_gotoxy(10, 5);
     displayDate();
@@ -298,7 +324,6 @@ void displayDayInfo(void) {
     lcd_str("Day info");
     lcd_gotoxy(0, 2);
     lcd_str(msg[dateIndex]);
-    
     lcd_gotoxy(10, 5);
     displayDate();
 }
@@ -313,16 +338,16 @@ void displaySetDate(unsigned char mode) {
     switch(mode){
         
         case MODE_SET_DATE_YEAR:
-            lcd_str("set year");       
+            lcd_str("Set year");       
             break;
         case MODE_SET_DATE_MONTH:
-            lcd_str("set month");       
+            lcd_str("Set month");       
             break;
         case MODE_SET_DATE_DAY_OF_WEEK:
-            lcd_str("set day of week");    
+            lcd_str("Set day week");    
             break;
         case MODE_SET_DATE_DAY:
-            lcd_str("set day");       
+            lcd_str("Set day");       
             break;
     } 
     lcd_gotoxy(0, 2);
@@ -335,10 +360,10 @@ void displaySetTime(unsigned char mode) {
     lcd_gotoxy(0, 0);
     switch(mode){
         case MODE_SET_TIME_HOUR:
-            lcd_str("set hours");       
+            lcd_str("Set hours");       
             break;
         case MODE_SET_TIME_MINUTE:
-            lcd_str("set minute");       
+            lcd_str("Set minute");       
             break;
     } 
     lcd_gotoxy(0, 2);
@@ -367,19 +392,19 @@ void displayInfo(void){
             displayDayInfo();       
             break;
     } 
-   
 }
 
 void checkDate(void){
     unsigned char i;
     dateIndex = 0;
+    dateInfoPresent = FALSE;
     for (i = 0; i < DATE_SIZE; i++) {    
         if (dates[i][0] == date && dates[i][1] == month) {
             dateIndex = i;
+            dateInfoPresent = TRUE;
             return;
         }
     }
-    
 }
 
 void main(void) {
@@ -411,11 +436,8 @@ void main(void) {
     TCCR1B=0x05;
     OCR1AH=0x03;
     OCR1AL=0x0D;
-    
-    
-	
-
-//twi_master_init(100);
+ 
+ //twi_master_init(100);
 	TWBR = 0x0C;
 	TWAR = 0xD0;
 	TWCR = 0x44;
@@ -427,15 +449,14 @@ void main(void) {
     TIMSK=0x10;
  
 
-// Global enable interrupts
-#asm("sei")
+    // Global enable interrupts
+    #asm("sei")
 
 	ds3231_init();
-
 	lcd_init();
 	lcd_contrast(0x40);
+
     rtc_get_time(&seconds, &minutes, &hours, &day, &date, &month, &year); 
-   
 
     //skip first values
     if (ds18b20_devices >= 0) {
@@ -443,10 +464,9 @@ void main(void) {
         ds18b20_temperature(&rom_code[i][0]);
         }
      }
-     
+
     checkDate();
 
-  
 	while (1) {
 		rtc_get_time(&seconds, &minutes, &hours, &day, &date, &month, &year); 
         if(hours == 0 && minutes == 0){
