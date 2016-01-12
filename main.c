@@ -26,7 +26,7 @@
 .equ __w1_bit=3
 #endasm
 
-//#define REAL_DATES //uncomment for use real date
+#define REAL_DATES //uncomment for use real date
 
 #include <1wire.h>
 #include <mega8.h>
@@ -67,13 +67,14 @@
 
 unsigned char *dayOfWeek[8] = {
     "Unk",
+    "Sun",
     "Mon",
     "Tue",
     "Wed",
     "Thu",
     "Fri",
-    "Sat",
-    "Sun"
+    "Sat"
+
 };
 
 ds18b20_temperature_data_struct temperature[MAX_DS18b20];
@@ -417,7 +418,7 @@ void main(void) {
 	PORTC = 0x07;
 	DDRC = 0xF8;
 
-	PORTD = 0x00;
+	PORTD = 0xFF;
 	DDRD = 0xFF;
     
     // Timer/Counter 1 initialization
