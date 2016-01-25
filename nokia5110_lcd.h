@@ -6,10 +6,10 @@
 
 #define LCD_CACHE_SIZE ((LCD_X_RES * LCD_Y_RES) / 6)
 
-#define LCD_CLK_PIN 	PORTB.0
+#define LCD_CLK_PIN 	PORTB.2
 #define LCD_DATA_PIN 	PORTB.1
-#define LCD_DC_PIN 		PORTB.2
-#define LCD_RST_PIN 	PORTB.6
+#define LCD_DC_PIN 		PORTB.0
+#define LCD_RST_PIN 	PORTB.7
 
 
 void lcd_init(void);

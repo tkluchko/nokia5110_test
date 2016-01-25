@@ -52,7 +52,7 @@
 //count of ds18b20
 #define MAX_DS18b20 2
 
-#define LED_BACKLIGT PORTD.0
+#define LED_BACKLIGT PORTD.7
 
 #define MODE_SHOW_MAIN_INFO 0
 #define MODE_SET_DATE_YEAR 1
